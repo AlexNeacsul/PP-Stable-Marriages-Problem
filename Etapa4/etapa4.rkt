@@ -31,8 +31,7 @@
 ;;         aceasta există, altfel p rămâne temporar fără partener)
 
 
-; TODO 1
-; Implementați funcția match care primește o persoană person care
+; Implementarea funcției match care primește o persoană person care
 ; intră în cameră, lista engagements a cuplurilor din cameră
 ; (cuplurile având pe prima poziție persoanele de gen opus lui 
 ; person), o listă pref1 care conține preferințele celor de același 
@@ -52,6 +51,7 @@
 ;   aceste persoane cu valoarea #f, astfel încât funcția să
 ;   întoarcă în aceeași listă atât informația despre cine din
 ;   cameră este logodit, cât și despre cine este singur
+
 (define (match person engagements pref1 pref2 queue)
   (let match-aux ([engagements-aux engagements] [person-list (get-pref-list pref1 person)])
     (cond [(null? person-list) (cons (cons #f person) engagements-aux)]
@@ -61,40 +61,41 @@
           [else (match-aux engagements-aux (cdr person-list))])))
 
 
-; TODO 2
-; Implementați funcția path-to-stability care primește lista
+; Implementarea funcției path-to-stability care primește lista
 ; engagements a cuplurilor din cameră, o listă de preferințe 
 ; masculine mpref, o listă de preferințe feminine wpref, respectiv
 ; coada queue a persoanelor din afara camerei, și întoarce lista
 ; completă de logodne stabile, obținută după ce fiecare persoană
 ; din queue este introdusă pe rând în cameră și supusă procesului
 ; descris de funcția match.
-; Precizări (aspecte care se garantează, nu trebuie verificate):
-; - fiecare cuplu din lista engagements are pe prima poziție
-;   o femeie
-; - persoanele nelogodite din cameră apar în engagements sub forma
-;   (#f . nume-bărbat) sau (nume-femeie . #f)
+;   - persoanele nelogodite din cameră apar în engagements sub forma
+;     (#f . nume-bărbat) sau (nume-femeie . #f)
+
 (define (path-to-stability engagements mpref wpref queue)
-  (cond [(null? queue) engagements]
-        [(not (member (car queue) (get-men mpref)))
-         (let match-w ([pref1 wpref] [pref2 mpref] [person-list (get-pref-list wpref (car queue))])
-           (cond [(null? person-list) (path-to-stability (cons (cons (car queue) #f) engagements) mpref wpref (cdr queue))]
-                 [(equal? #f (not (member (car person-list) (cdr queue)))) (match-w wpref mpref (cdr person-list))]
-                 [(equal? #f (get-partner engagements (car person-list))) (path-to-stability (update-engagements engagements (car person-list) (car queue)) mpref wpref (cdr queue))]
-                 [(preferable? (get-pref-list pref2 (car person-list)) (car queue) (get-partner engagements (car person-list)))
-                  (path-to-stability (update-engagements engagements (car person-list) (car queue)) mpref wpref (cons (get-partner engagements (car person-list)) (cdr queue)))]
-                 [else (match-w wpref mpref (cdr person-list))]))]
-        [else (let match-m ([pref1 mpref] [pref2 wpref] [person-list (get-pref-list mpref (car queue))])
-                (cond [(null? person-list) (path-to-stability (cons (cons #f (car queue)) engagements) mpref wpref (cdr queue))]
-                      [(equal? #f (not (member (car person-list) (cdr queue)))) (match-m mpref wpref (cdr person-list))]
-                      [(equal? #f (get-partner engagements (car person-list))) (path-to-stability (update-engagements engagements (car person-list) (car queue)) mpref wpref (cdr queue))]
-                      [(preferable? (get-pref-list pref2 (car person-list)) (car queue) (get-partner engagements (car person-list)))
-                       (path-to-stability (update-engagements engagements (car person-list) (car queue)) mpref wpref (cons (get-partner engagements (car person-list)) (cdr queue)))]
-                      [else (match-m mpref wpref (cdr person-list))]))]))
+  (let ([w-reverse (λ (x) (map (λ (y) (cons (cdr y) (car y))) x))]) 
+    (cond [(null? queue) engagements]
+          [(not (member (car queue) (get-men mpref)))
+           (let match-w ([person-list (get-pref-list wpref (car queue))])
+             (cond [(null? person-list)
+                    (path-to-stability (cons (cons (car queue) #f) engagements) mpref wpref (cdr queue))]
+                   [(equal? #f (not (member (car person-list) (cdr queue)))) (match-w (cdr person-list))]
+                   [(equal? #f (get-partner (w-reverse engagements) (car person-list)))
+                    (path-to-stability (w-reverse (update-engagements (w-reverse engagements) (car person-list) (car queue))) mpref wpref (cdr queue))]
+                   [(preferable? (get-pref-list mpref (car person-list)) (car queue) (get-partner (w-reverse engagements) (car person-list)))
+                    (path-to-stability (w-reverse (update-engagements (w-reverse engagements) (car person-list) (car queue))) mpref wpref (cons (get-partner (w-reverse engagements) (car person-list)) (cdr queue)))]
+                   [else (match-w (cdr person-list))]))]
+          [else (let match-m ([person-list (get-pref-list mpref (car queue))])
+                  (cond [(null? person-list)
+                         (path-to-stability (cons (cons #f (car queue)) engagements) mpref wpref (cdr queue))]
+                        [(equal? #f (not (member (car person-list) (cdr queue)))) (match-m (cdr person-list))]
+                        [(equal? #f (get-partner engagements (car person-list)))
+                         (path-to-stability (update-engagements engagements (car person-list) (car queue)) mpref wpref (cdr queue))]
+                        [(preferable? (get-pref-list wpref (car person-list)) (car queue) (get-partner engagements (car person-list)))
+                         (path-to-stability (update-engagements engagements (car person-list) (car queue)) mpref wpref (cons (get-partner engagements (car person-list)) (cdr queue)))]
+                        [else (match-m (cdr person-list))]))])))
 
 
-; TODO 3
-; Implementați funcția update-stable-match care primește o listă 
+; Implementarea funcției update-stable-match care primește o listă 
 ; completă de logodne engagements (soluția anterioară), o listă de 
 ; preferințe masculine mpref și o listă de preferințe feminine wpref 
 ; (adică preferințele modificate față de cele pe baza cărora s-a 
@@ -104,28 +105,12 @@
 ; - room-engagements = engagements - unstable
 ; - queue = persoanele din unstable
 ; - aplică algoritmul path-to-stability
-; Precizări (aspecte care se garantează, nu trebuie verificate):
-; - fiecare cuplu din lista engagements are pe prima poziție
-;   o femeie
+
 (define (update-stable-match engagements mpref wpref)
-  'your-code-here)
-
-
-; TODO 4
-; Implementați funcția build-stable-matches-stream care primește
-; un flux pref-stream de instanțe SMP și întoarce fluxul de 
-; soluții SMP corespunzător acestor instanțe.
-; O instanță SMP este o pereche cu punct între o listă de preferințe
-; masculine și o listă de preferințe feminine.
-; Fluxul rezultat se va obține în felul următor:
-; - primul element se calculează prin aplicarea algoritmului
-;   Gale-Shapley asupra primei instanțe
-; - următoarele elemente se obțin prin actualizarea soluției
-;   anterioare conform algoritmului implementat în etapa 4 a temei
-; Trebuie să lucrați cu interfața pentru fluxuri. Dacă rezolvați
-; problema folosind liste și doar convertiți în/din fluxuri,
-; punctajul pe acest exercițiu se anulează în totalitate.
-(define (build-stable-matches-stream pref-stream)
-  'your-code-here)
-
-
+  (letrec ([unstable (get-unstable-couples engagements mpref wpref)]
+           [queue (get-couple-members unstable)]
+           [room-engagements (let re-aux ([stable null] [engagements-aux engagements])
+                               (cond [(null? engagements-aux) stable]
+                                     [(not (member (car engagements-aux) unstable)) (re-aux (cons (car engagements-aux) stable) (cdr engagements-aux))]
+                                     [else (re-aux stable (cdr engagements-aux))]))])
+    (path-to-stability room-engagements mpref wpref queue)))
